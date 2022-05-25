@@ -88,7 +88,7 @@ fn get_ips(network_range: String) -> Vec<String> {
 
 #[cfg(target_os = "linux")]
 fn spray(ips: Vec<String>) {
-    
+    println!("efjeiwafjew");
 }
 
 #[cfg(target_os = "windows")]
