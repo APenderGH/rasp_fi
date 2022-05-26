@@ -146,6 +146,5 @@ fn main() {
     let args = Cli::parse();
     let ips = get_ips(args.network_range);
     spray(ips);
-
 }
 
