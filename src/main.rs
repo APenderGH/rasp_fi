@@ -1,5 +1,5 @@
 use clap::Parser;
-use std::process::{Command,Stdio};
+use std::process::{Command};
 use colored::*;
 use std::io::Write;
 use ipaddress::IPAddress;
