@@ -80,8 +80,7 @@ fn get_ips(network_range: String) -> Vec<String> {
     for line in nmap_output.lines() {
         for macaddr in pi_macaddr {
             if line.contains(macaddr) {
-               println!("{}", line.bright_green());
-               ips.push(String::from(&nmap_output.lines().nth(count - 2).unwrap()[21..]));
+               ips.push(String::from(&nmap_output.lines().nth(count - 2).unwrap()[21..])); //Gets IP from nmap output
             }
         }
         count += 1;
@@ -92,59 +91,73 @@ fn get_ips(network_range: String) -> Vec<String> {
 }
 
 #[cfg(target_os = "linux")]
-fn spray(ips: Vec<String>) {
+fn spray(ips: Vec<String>, demo: Option<String>) {
+    println!("{}", "Spraying...".green());
+
     for ip in ips {
-        print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
-        let ssh = Command::new("sshpass")
-                          .arg("-p")
-                          .arg(DEFAULT_PASSWORD)
-                          .arg("ssh")
-                          .arg("-o")
-                          .arg("StrictHostKeyChecking no")
-                          .arg(format!("{}@{}", DEFAULT_USERNAME,  ip))
-                          .arg("whoami")
-                          .output()
-                          .expect("Tried to run 'sshpass -p DEFAULT_PASSWORD ssh -o 'StrictHostKeyChecking no' DEFAULT_USERNAME@IP whoami' but failed.");
-        
-        let ssh_output = String::from_utf8_lossy(&ssh.stdout);
-        if (ssh_output.contains(DEFAULT_USERNAME)){
-            println!("[{}] {}", "+".bright_green(), ip);
+        if (IPAddress::is_valid(&ip)) {
+            //if this isn't a demo, or the demo input matches a found ip. Then spray.
+            if (demo.is_none() || String::from(demo.as_ref().unwrap()) == ip){
+                print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
+                let ssh = Command::new("sshpass")
+                                .arg("-p")
+                                .arg(DEFAULT_PASSWORD)
+                                .arg("ssh")
+                                .arg("-o")
+                                .arg("StrictHostKeyChecking no")
+                                .arg(format!("{}@{}", DEFAULT_USERNAME,  ip))
+                                .arg("whoami")
+                                .output()
+                                .expect("Tried to run 'sshpass -p DEFAULT_PASSWORD ssh -o 'StrictHostKeyChecking no' DEFAULT_USERNAME@IP whoami' but failed.");
+                let ssh_output = String::from_utf8_lossy(&ssh.stdout);
+
+                if (ssh_output.contains(DEFAULT_USERNAME)){
+                    println!("[{}] {}", "+".bright_green(), ip);
+                } else {
+                    println!("[{}] {}", "-".bright_red(), ip);
+                }
+            } else {
+                println!("[{}] {} - {}", "~".truecolor(255,164,0), ip, "Skipped!".truecolor(255,164,0));
+            }
         } else {
-            println!("[{}] {}", "-".bright_red(), ip);
+            println!("[{}] {} - {}", "~".truecolor(255,164,0), ip, "Invalid Address".truecolor(255,164,0));
         }
     }
 }
 
 #[cfg(target_os = "windows")]
-fn spray(ips: Vec<String>) {
-
-    
+fn spray(ips: Vec<String>, demo: Option<String>) {
+    println!("{}", "Spraying...".green());
 
     for ip in ips {
         if (IPAddress::is_valid(&ip)) {
+            //if this isn't a demo, or the demo input matches a found ip. Then spray.
+            if (demo.is_none() || String::from(demo.as_ref().unwrap()) == ip){
+                let mut file = std::fs::File::create("whoami.txt").expect("Failed to create file for plink");
+                file.write_all("whoami".as_bytes()).expect("Failed to write to file for plink");
+    
+                print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
+                let ssh = Command::new("plink")
+                                  .arg("-ssh")
+                                  .arg(format!("{}@{}", DEFAULT_USERNAME, ip))
+                                  .arg("-pw")
+                                  .arg(DEFAULT_PASSWORD)
+                                  .arg("-m")
+                                  .arg("whoami.txt")
+                                  .output()
+                                  .expect("ssh failed to start");
+                let ssh_output = String::from_utf8_lossy(&ssh.stdout);
 
-            let mut file = std::fs::File::create("whoami.txt").expect("Failed to file for plink");
-            file.write_all("whoami".as_bytes()).expect("Failed to write to file for plink");
-
-            print!("[{}] {}\r", "~".truecolor(169,169,169), ip);
-            let ssh = Command::new("plink")
-                              .arg("-ssh")
-                              .arg(format!("{}@{}", DEFAULT_USERNAME, ip))
-                              .arg("-pw")
-                              .arg(DEFAULT_PASSWORD)
-                              .arg("-m")
-                              .arg("whoami.txt")
-                              .output()
-                              .expect("ssh failed to start");
-            let ssh_output = String::from_utf8_lossy(&ssh.stdout);
-            if (ssh_output.contains(DEFAULT_USERNAME)){
-                println!("[{}] {}", "+".bright_green(), ip);
+                if (ssh_output.trim() == DEFAULT_USERNAME){
+                    println!("[{}] {}", "+".bright_green(), ip);
+                } else {
+                    println!("[{}] {}", "-".bright_red(), ip);
+                }
+                std::fs::remove_file("whoami.txt").expect("Failed to delete file used for plink. Please delete it from your directory.");
+                
             } else {
-                println!("[{}] {}", "-".bright_red(), ip);
+                println!("[{}] {} - {}", "~".truecolor(255,164,0), ip, "Skipped!".truecolor(255,164,0));
             }
-
-            std::fs::remove_file("whoami.txt").expect("Failed to delete file used for plink. Please delete it from your directory.");
-            
         } else {
             println!("[{}] {} - {}", "~".truecolor(255,164,0), ip, "Invalid Address".truecolor(255,164,0));
         }
@@ -155,8 +168,7 @@ fn spray(ips: Vec<String>) {
 fn main() {
     check_external_dependencies();
     let args = Cli::parse();
-    let mut ips = get_ips(args.network_range);
-    if (!args.demo.is_none()) { ips = vec![args.demo.unwrap()]; }
-    spray(ips);
+    let ips = get_ips(args.network_range);
+    if (ips.len() > 0) { spray(ips, args.demo); }
 }
 
