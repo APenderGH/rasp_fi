@@ -149,7 +149,7 @@ fn spray(ips: Vec<String>, demo: Option<String>) {
                 let ssh_output = String::from_utf8_lossy(&ssh.stdout);
 
                 if (ssh_output.trim() == DEFAULT_USERNAME){
-                    println!("[{}] {}", "+".bright_green(), ip);
+                    println!("[{}] {} - {}", "+".bright_green(), ip, "Pwn3d!".bright_green().bold());
                 } else {
                     println!("[{}] {}", "-".bright_red(), ip);
                 }
